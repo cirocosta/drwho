@@ -38,7 +38,7 @@ func Parse(body string) (*Response, error) {
 		if response.Whois == "" {
 			response.Whois, err = findReferral(line)
 			if err != nil {
-				return nil, fmt.Errorf("find referral: %w", err)
+				return nil, fmt.Errorf("find ref: %w", err)
 			}
 		}
 	}

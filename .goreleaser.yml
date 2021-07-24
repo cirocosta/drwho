@@ -1,6 +1,6 @@
 builds:
-  - binary: monero
-    main: ./cmd/monero
+  - binary: drwho
+    main: ./cmd/drwho
     env:
       - CGO_ENABLED=0
     goos:

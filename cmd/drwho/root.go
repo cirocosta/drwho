@@ -8,13 +8,18 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/net/proxy"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/cirocosta/drwho/pkg/who"
 )
 
 type command struct {
-	fpath   string
-	verbose bool
+	// TODO
+	concurrency uint
+	fpath       string
+	proxy       string
+	verbose     bool
 }
 
 func (c *command) Cmd() *cobra.Command {
@@ -24,12 +29,20 @@ func (c *command) Cmd() *cobra.Command {
 		Short: "batch whois resolver",
 		RunE:  c.RunE,
 	}
+
+	cmd.Flags().StringVarP(&c.proxy, "proxy", "x",
+		"", "socks5 proxy to send queries through")
+
 	cmd.Flags().BoolVarP(&c.verbose, "verbose", "v",
 		false, "whether we should be verbose or not")
 
 	cmd.Flags().StringVarP(&c.fpath, "file", "f",
 		"", "location of a file containing ipv4 addresses to resolve")
 	_ = cmd.MarkFlagFilename("file")
+
+	cmd.Flags().UintVar(&c.concurrency, "concurrency",
+		10, "maximum number of whois queries to have "+
+			"in-flight at the same time")
 
 	return cmd
 }
@@ -60,15 +73,52 @@ func (c *command) RunE(_ *cobra.Command, args []string) error {
 		opts = append(opts, who.WithVerbose(true))
 	}
 
-	client := who.NewClient(opts...)
-
-	for _, addr := range addresses {
-		res, err := client.Whois(ctx, addr)
+	if c.proxy != "" {
+		dialer, err := proxy.SOCKS5("tcp", c.proxy, nil, nil)
 		if err != nil {
-			return err
+			return fmt.Errorf("socks5 '%s': %w", c.proxy, err)
 		}
 
-		fmt.Println(res)
+		contextDialer, ok := dialer.(proxy.ContextDialer)
+		if !ok {
+			return fmt.Errorf("can't cast proxy dialer " +
+				"to proxy context dialer")
+		}
+
+		opts = append(opts, who.WithContextDialer(contextDialer))
+	}
+
+	client := who.NewClient(opts...)
+	if err := c.gatherInfo(ctx, client, addresses); err != nil {
+		return fmt.Errorf("gather info: %w", err)
+	}
+
+	return nil
+}
+
+func (c *command) gatherInfo(
+	ctx context.Context, client *who.Client, addresses []string,
+) error {
+	var g *errgroup.Group
+
+	g, ctx = errgroup.WithContext(ctx)
+
+	for _, addr := range addresses {
+		addr := addr
+
+		g.Go(func() error {
+			res, err := client.Whois(ctx, addr)
+			if err != nil {
+				return fmt.Errorf("whois '%s': %w", addr, err)
+			}
+
+			fmt.Printf("%s,%s\n", addr, res.Org)
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("wait: %w", err)
 	}
 
 	return nil
