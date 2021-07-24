@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -38,6 +41,15 @@ func (c *command) RunE(_ *cobra.Command, args []string) error {
 
 	addresses := append([]string{}, args...)
 
+	if c.fpath != "" {
+		addressesFromFile, err := c.readAddressesFromFile()
+		if err != nil {
+			return fmt.Errorf("read addresses from file: %w")
+		}
+
+		addresses = append(addresses, addressesFromFile...)
+	}
+
 	if len(addresses) == 0 {
 		return fmt.Errorf("at least one address must be specified," +
 			" either via positional args or a file.")
@@ -60,4 +72,32 @@ func (c *command) RunE(_ *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func (c *command) readAddressesFromFile() ([]string, error) {
+	var r io.Reader
+
+	if c.fpath == "-" {
+		r = os.Stdin
+	} else {
+		file, err := os.Open(c.fpath)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to open file at %s: %w", c.fpath, err)
+		}
+		defer file.Close()
+
+		r = file
+	}
+
+	addrs := []string{}
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		addrs = append(addrs, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed scanning lines: %w", err)
+	}
+
+	return addrs, nil
 }

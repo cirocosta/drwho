@@ -120,11 +120,6 @@ func NewClient(opts ...ClientOption) *Client {
 	}
 
 	return client
-
-	// conn, err := cfg.ContextDialer.DialContext(ctx, "tcp", addr)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("dial ctx: %w", err)
-	// }
 }
 
 // Whois runs WHOIS queries for a given addr (v4 or v6).
@@ -184,7 +179,7 @@ func (c *Client) whois(
 	start := time.Now()
 
 	conn, err := c.contextDialer.DialContext(
-		ctx, "tcp", addWHOISPortIfNotSet(server),
+		ctx, "tcp", c.addWHOISPortIfNotSet(server),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("dial context: %w", err)
@@ -216,7 +211,7 @@ func (c *Client) whois(
 	return parsedBody, nil
 }
 
-func addWHOISPortIfNotSet(addr string) string {
+func (c *Client) addWHOISPortIfNotSet(addr string) string {
 	if strings.HasSuffix(addr, ":43") {
 		return addr
 	}

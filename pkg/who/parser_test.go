@@ -22,6 +22,7 @@ func TestParse(t *testing.T) {
 			body:     "",
 			expected: &who.Response{},
 		},
+
 		{
 			name: "with 'whois' referral",
 			body: `
@@ -46,6 +47,31 @@ ReferralServer:  whois://whois.ripe.net
 `,
 			expected: &who.Response{
 				Whois: "whois.ripe.net",
+			},
+		},
+
+		{
+			name: "with 'ReferralServer' and 'OrgName'",
+			body: `
+# If you see inaccuracies in the results, please report at
+OrgName:        RIPE Network Coordination Centre
+ReferralServer:  whois://whois.ripe.net
+`,
+			expected: &who.Response{
+				Whois: "whois.ripe.net",
+				Org:   "ripe network coordination centre",
+			},
+		},
+
+		{
+			name: "with 'org-name'",
+			body: `
+organisation:   ORG-HOA1-RIPE
+org-name:       Hetzner Online GmbH
+country:        DE
+`,
+			expected: &who.Response{
+				Org: "hetzner online gmbh",
 			},
 		},
 	} {
