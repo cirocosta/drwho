@@ -27,19 +27,12 @@ func Parse(body string) (*Response, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		var err error
 		if response.Org == "" {
-			response.Org, err = findOrg(line)
-			if err != nil {
-				return nil, fmt.Errorf("find org: %w", err)
-			}
+			response.Org = findOrg(line)
 		}
 
 		if response.Whois == "" {
-			response.Whois, err = findReferral(line)
-			if err != nil {
-				return nil, fmt.Errorf("find ref: %w", err)
-			}
+			response.Whois = findReferral(line)
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -49,7 +42,35 @@ func Parse(body string) (*Response, error) {
 	return response, nil
 }
 
-func findWithPrefixes(line string, prefixes []string) (string, error) {
+// findOrg finds information that resembles organization names.
+//
+func findOrg(line string) string {
+	prefixes := []string{
+		"orgname:",
+		"org-name:",
+		"contact:company:",
+	}
+
+	return findWithPrefixes(line, prefixes)
+}
+
+// findReferral looks for entries that indicate that we should follow up with a
+// request to a more specialized whois server.
+//
+func findReferral(line string) string {
+	prefixes := []string{
+		"registrar whois server:",
+		"whois:",
+		"referralserver:",
+	}
+
+	return removeScheme(findWithPrefixes(line, prefixes))
+}
+
+// findWithPrefixes searches a line for a value that starts with a prefix from
+// the list of prefixes.
+//
+func findWithPrefixes(line string, prefixes []string) string {
 	line = strings.ToLower(line)
 
 	for _, prefix := range prefixes {
@@ -57,50 +78,10 @@ func findWithPrefixes(line string, prefixes []string) (string, error) {
 			continue
 		}
 
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
-			return "", fmt.Errorf("expected to split '%s' "+
-				"in two parts, but got %d",
-				line, len(parts),
-			)
-		}
-
-		return strings.TrimSpace(parts[1]), nil
+		return strings.TrimSpace(line[len(prefix):])
 	}
 
-	return "", nil
-}
-
-func findOrg(line string) (string, error) {
-	prefixes := []string{
-		"orgname:",
-		"org-name:",
-	}
-
-	res, err := findWithPrefixes(line, prefixes)
-	if err != nil {
-		return "", fmt.Errorf("find with prefixes: %w", err)
-	}
-
-	return res, nil
-}
-
-// findReferral looks for entries that indicate that we should follow up with a
-// request to a more specialized whois server.
-//
-func findReferral(line string) (string, error) {
-	prefixes := []string{
-		"registrar whois server:",
-		"whois:",
-		"referralserver:",
-	}
-
-	res, err := findWithPrefixes(line, prefixes)
-	if err != nil {
-		return "", fmt.Errorf("find with prefixes: %w", err)
-	}
-
-	return removeScheme(res), nil
+	return ""
 }
 
 // removeScheme removes the scheme of an address (<scheme>://<something> ==>

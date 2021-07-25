@@ -74,6 +74,20 @@ country:        DE
 				Org: "hetzner online gmbh",
 			},
 		},
+
+		{
+			name: "with 'contact:company'",
+			body: `
+contact:Class-Name:contact
+contact:Name:Abuse Department
+contact:Company:Joe's Datacenter, LLC
+contact:Street-Address:1325 Tracy Ave.
+contact:City:Kansas City
+`,
+			expected: &who.Response{
+				Org: "joe's datacenter, llc",
+			},
+		},
 	} {
 		tc := tc
 

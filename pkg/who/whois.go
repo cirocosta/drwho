@@ -149,13 +149,22 @@ func NewClient(opts ...ClientOption) *Client {
 //      with `+ n` so that it's unambigous. from my understanding, that's _not_
 //      a standard, so we must deal with it in a case-by-case basis.
 //
-func (c *Client) Whois(ctx context.Context, addr string) (*Response, error) {
+func (c *Client) Whois(
+	ctx context.Context, addrToQry string,
+) (*Response, error) {
 	server := c.rootWHOISAddress
 
 	for i := 0; i < c.maxRecurse; i++ {
 		c.logger.WithField("recurse", i).Debug("querying")
 
-		resp, err := c.whois(ctx, server, c.buildQuery(server, addr))
+		serverWithPort, err := addWHOISPortIfNotSet(server)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"add whois port if not set: %w", err)
+		}
+
+		query := c.buildQuery(serverWithPort, addrToQry)
+		resp, err := c.whois(ctx, serverWithPort, query)
 		if err != nil {
 			return nil, fmt.Errorf("whois: %w", err)
 		}
@@ -171,18 +180,6 @@ func (c *Client) Whois(ctx context.Context, addr string) (*Response, error) {
 	return nil, nil
 }
 
-// buildQuery prepares a WHOIS query.
-//
-func (c *Client) buildQuery(server, addr string) []byte {
-	const crlf = "\r\n"
-
-	if server == "whois.arin.net" {
-		return []byte("n + " + addr + crlf)
-	}
-
-	return []byte(addr + crlf)
-}
-
 // whois connects against a `server` and submits a WHOIS `query` against it.
 //
 func (c *Client) whois(
@@ -190,9 +187,7 @@ func (c *Client) whois(
 ) (*Response, error) {
 	start := time.Now()
 
-	conn, err := c.contextDialer.DialContext(
-		ctx, "tcp", c.addWHOISPortIfNotSet(server),
-	)
+	conn, err := c.contextDialer.DialContext(ctx, "tcp", server)
 	if err != nil {
 		return nil, fmt.Errorf("dial context: %w", err)
 	}
@@ -227,10 +222,34 @@ func (c *Client) whois(
 	return parsedBody, nil
 }
 
-func (c *Client) addWHOISPortIfNotSet(addr string) string {
-	if strings.HasSuffix(addr, ":43") {
-		return addr
+// buildQuery prepares a WHOIS query.
+//
+func (c *Client) buildQuery(server, addr string) []byte {
+	const crlf = "\r\n"
+
+	if strings.HasPrefix(server, "whois.arin.net") {
+		return []byte("n + " + addr + crlf)
 	}
 
-	return addr + ":43"
+	return []byte(addr + crlf)
+}
+
+func addWHOISPortIfNotSet(addr string) (string, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		addrErr, ok := err.(*net.AddrError)
+		if !ok {
+			return "", fmt.Errorf("splithostport '%s': "+
+				"not addrerror: %w", addr, err)
+		}
+
+		if !strings.Contains(addrErr.Err, "missing port") {
+			return "", fmt.Errorf("splithostport '%s': "+
+				"err is not missing port: %w", addr, err)
+		}
+
+		return addr + ":43", nil
+	}
+
+	return net.JoinHostPort(host, port), nil
 }

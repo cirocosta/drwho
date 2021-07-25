@@ -47,7 +47,6 @@ func (c *command) Cmd() *cobra.Command {
 	return cmd
 }
 
-// nolint:forbidigo
 func (c *command) RunE(_ *cobra.Command, args []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
