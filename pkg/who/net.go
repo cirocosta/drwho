@@ -38,7 +38,7 @@ func (v *VerboseConn) printWithPadding(b []byte) {
 	bodyStr := string(body)
 
 	for _, line := range strings.Split(bodyStr, "\n") {
-		fmt.Fprintln(os.Stderr, "\t"+string(line))
+		fmt.Fprintln(os.Stderr, "\t"+line)
 	}
 }
 

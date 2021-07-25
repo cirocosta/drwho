@@ -7,6 +7,8 @@ import (
 )
 
 type Response struct {
+	Addr string
+
 	// Whois indicates what is a follow-up WHOIS server that should be
 	// reached to in order to find out information about this addr.
 	//
@@ -15,6 +17,36 @@ type Response struct {
 	// Org is the name of the entity responsible for this address.
 	//
 	Org string
+
+	// Country is the name of the country.
+	//
+	Country string
+
+	// Netname
+	//
+	Netname string
+
+	// Parent points at the parent WHOIS response that led to this.
+	//
+	Parent *Response
+
+	RecurseError error
+}
+
+func (r *Response) Name() string {
+	if r.Org != "" {
+		return r.Org
+	}
+
+	if r.Netname != "" {
+		return r.Netname
+	}
+
+	if r.Parent != nil {
+		return r.Parent.Name()
+	}
+
+	return ""
 }
 
 // Parse evaluates the body of a WHOIS request, parsing such information in a
@@ -31,8 +63,16 @@ func Parse(body string) (*Response, error) {
 			response.Org = findOrg(line)
 		}
 
+		if response.Netname == "" {
+			response.Netname = findNetname(line)
+		}
+
 		if response.Whois == "" {
-			response.Whois = findReferral(line)
+			response.Whois = findWhois(line)
+		}
+
+		if response.Country == "" {
+			response.Country = findCountry(line)
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -42,22 +82,38 @@ func Parse(body string) (*Response, error) {
 	return response, nil
 }
 
-// findOrg finds information that resembles organization names.
-//
-func findOrg(line string) string {
+func findNetname(line string) string {
 	prefixes := []string{
-		"orgname:",
-		"org-name:",
-		"contact:company:",
+		"netname:",
 	}
 
 	return findWithPrefixes(line, prefixes)
 }
 
-// findReferral looks for entries that indicate that we should follow up with a
+func findCountry(line string) string {
+	prefixes := []string{
+		"country:",
+		"contact:country-code:",
+	}
+
+	return findWithPrefixes(line, prefixes)
+}
+
+func findOrg(line string) string {
+	prefixes := []string{
+		"orgname:",
+		"org-name:",
+		"contact:company:",
+		"owner:",
+	}
+
+	return findWithPrefixes(line, prefixes)
+}
+
+// findWhois looks for entries that indicate that we should follow up with a
 // request to a more specialized whois server.
 //
-func findReferral(line string) string {
+func findWhois(line string) string {
 	prefixes := []string{
 		"registrar whois server:",
 		"whois:",

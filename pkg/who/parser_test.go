@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// nolint:funlen
 func TestParse(t *testing.T) {
 	t.Parallel()
 
@@ -68,7 +69,6 @@ ReferralServer:  whois://whois.ripe.net
 			body: `
 organisation:   ORG-HOA1-RIPE
 org-name:       Hetzner Online GmbH
-country:        DE
 `,
 			expected: &who.Response{
 				Org: "hetzner online gmbh",
@@ -86,6 +86,36 @@ contact:City:Kansas City
 `,
 			expected: &who.Response{
 				Org: "joe's datacenter, llc",
+			},
+		},
+
+		{
+			name: "with 'netname:'",
+			body: `
+inetnum:        45.138.172.0 - 45.138.172.255
+netname:        ROUTERHOSTING
+remarks:        routerhosting.com
+admin-c:        CONO
+tech-c:         CONO
+`,
+			expected: &who.Response{
+				Netname: "routerhosting",
+			},
+		},
+
+		{
+			name: "with 'owner:'",
+			body: `
+inetnum:     167.56.0.0/13
+status:      allocated
+aut-num:     N/A
+owner:       Administracion Nacional de Telecomunicaciones
+ownerid:     UY-ANTA-LACNIC
+responsible: ANTEL URUGUAY
+address:     Torre de las Telecomunicaciones, Guatemala, 1075, -
+`,
+			expected: &who.Response{
+				Org: "administracion nacional de telecomunicaciones",
 			},
 		},
 	} {

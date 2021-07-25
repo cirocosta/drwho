@@ -2,6 +2,7 @@ package who
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -16,7 +17,7 @@ const (
 	// RootWHOISAddress is the address of the default WHOIS server that we
 	// should always start our queries with.
 	//
-	DefaultRootWHOISAddress = "whois.iana.org"
+	DefaultRootWHOISAddress = "whois.arin.net"
 
 	// DefaultTimeout is the default maximum amount of time to wait for a
 	// request and response flow to take before bailing out, including the
@@ -29,7 +30,9 @@ const (
 	//
 	DefaultMaxRecurse = 5
 
-	DefaultToVerbose = false
+	// DefaultVerbose is the default configuration for the verbosity level.
+	//
+	DefaultVerbose = false
 )
 
 // Client provides the ability of retrieving WHOIS information starting from a
@@ -99,13 +102,19 @@ func WithVerbose(v bool) func(*Client) {
 
 type ClientOption func(*Client)
 
+// NewClient instantiates a new client responsible for handling recursive
+// querying and parsing of WHOIS information.
+//
+// ps.: it is safe to invocate the same client's `.Whois` method concurrently -
+// there is no shared context between multiple executions of it.
+//
 func NewClient(opts ...ClientOption) *Client {
 	client := &Client{
 		contextDialer:    &net.Dialer{},
 		maxRecurse:       DefaultMaxRecurse,
 		rootWHOISAddress: DefaultRootWHOISAddress,
 		timeout:          DefaultTimeout,
-		verbose:          DefaultToVerbose,
+		verbose:          DefaultVerbose,
 
 		logger: log.WithFields(log.Fields{
 			"component": "whois",
@@ -123,7 +132,7 @@ func NewClient(opts ...ClientOption) *Client {
 	return client
 }
 
-// Whois runs WHOIS queries for a given addr (v4 or v6).
+// Whois recursively submits WHOIS queries for a given addr (v4 or v6).
 //
 // It does so by first querying a root WHOIS server, and then based on its
 // response, recursively querying other WHOIS servers for the information we
@@ -152,10 +161,17 @@ func NewClient(opts ...ClientOption) *Client {
 func (c *Client) Whois(
 	ctx context.Context, addrToQry string,
 ) (*Response, error) {
-	server := c.rootWHOISAddress
+	var (
+		server = c.rootWHOISAddress
+		parent *Response
+	)
 
 	for i := 0; i < c.maxRecurse; i++ {
-		c.logger.WithField("recurse", i).Debug("querying")
+		c.logger.WithFields(log.Fields{
+			"recurse": i,
+			"addr":    addrToQry,
+			"server":  server,
+		}).Debug("querying")
 
 		serverWithPort, err := addWHOISPortIfNotSet(server)
 		if err != nil {
@@ -166,8 +182,18 @@ func (c *Client) Whois(
 		query := c.buildQuery(serverWithPort, addrToQry)
 		resp, err := c.whois(ctx, serverWithPort, query)
 		if err != nil {
-			return nil, fmt.Errorf("whois: %w", err)
+			err = fmt.Errorf("whois: %w", err)
+
+			if i != 0 {
+				parent.RecurseError = err
+				return parent, nil
+			}
+
+			return nil, err
 		}
+
+		resp.Parent = parent
+		parent = resp
 
 		if resp.Whois == "" {
 			return resp, nil
@@ -237,8 +263,8 @@ func (c *Client) buildQuery(server, addr string) []byte {
 func addWHOISPortIfNotSet(addr string) (string, error) {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
-		addrErr, ok := err.(*net.AddrError)
-		if !ok {
+		addrErr := &net.AddrError{}
+		if !errors.As(err, &addrErr) {
 			return "", fmt.Errorf("splithostport '%s': "+
 				"not addrerror: %w", addr, err)
 		}
