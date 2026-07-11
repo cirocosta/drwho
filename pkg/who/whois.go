@@ -154,6 +154,10 @@ func NewClient(opts ...ClientOption) *Client {
 func (c *Client) Whois(
 	ctx context.Context, addrToQry string,
 ) (*Response, error) {
+	if c.maxRecurse <= 0 {
+		return nil, fmt.Errorf("max recurse must be greater than zero")
+	}
+
 	var (
 		server = c.rootWHOISAddress
 		parent *Response
@@ -196,7 +200,9 @@ func (c *Client) Whois(
 		continue
 	}
 
-	return nil, nil
+	parent.RecurseError = fmt.Errorf(
+		"maximum recursion depth of %d reached", c.maxRecurse)
+	return parent, nil
 }
 
 // whois connects against a `server` and submits a WHOIS `query` against it.
