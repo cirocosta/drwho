@@ -131,7 +131,7 @@ func (c *command) initClient() error {
 	return nil
 }
 
-// nolint:forbidigo
+//nolint:forbidigo
 func (c *command) printResults(resC chan *who.Response, printC chan error) {
 	fmt.Printf("%s,%s,%s,%s\n", "ADDR", "ORG", "COUNTRY", "RECURSE ERR")
 	for res := range resC {
@@ -161,7 +161,7 @@ func (c *command) gatherAddressesToResolve(argv []string) ([]string, error) {
 
 	if len(addresses) == 0 {
 		return nil, fmt.Errorf("at least one address must be " +
-			"specified, either via positional args or a file.")
+			"specified, either via positional args or a file")
 	}
 
 	return addresses, nil
@@ -193,12 +193,4 @@ func (c *command) readAddressesFromFile() ([]string, error) {
 	}
 
 	return addrs, nil
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-
-	return b
 }

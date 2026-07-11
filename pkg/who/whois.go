@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -38,7 +38,6 @@ const (
 // Client provides the ability of retrieving WHOIS information starting from a
 // root WHOIS server and recursing all the way to the most specialized whois
 // server.
-//
 type Client struct {
 	contextDialer    ContextDialer
 	maxRecurse       int
@@ -57,7 +56,6 @@ type ContextDialer interface {
 
 // WithRootWHOISAddress configures the root WHOIS server to start all queries
 // from this client against.
-//
 func WithRootWHOISAddress(v string) func(*Client) {
 	return func(c *Client) {
 		c.rootWHOISAddress = v
@@ -67,7 +65,6 @@ func WithRootWHOISAddress(v string) func(*Client) {
 // WithContextDialer overrides the default context dialer. This is useful for,
 // for instance, Switching to something like a SOCKS5 dialer which would allow
 // one to make WHOIS requests over annonimity networks like Tor.
-//
 func WithContextDialer(v ContextDialer) func(*Client) {
 	return func(c *Client) {
 		c.contextDialer = v
@@ -76,7 +73,6 @@ func WithContextDialer(v ContextDialer) func(*Client) {
 
 // WithRequestTimeout overrides the default timeout for the request and
 // response flow.
-//
 func WithRequestTimeout(v time.Duration) func(*Client) {
 	return func(c *Client) {
 		c.timeout = v
@@ -85,7 +81,6 @@ func WithRequestTimeout(v time.Duration) func(*Client) {
 
 // WithMaxRecurse overrides the default maximum amount of recursions the client
 // can perform.
-//
 func WithMaxRecurse(v int) func(*Client) {
 	return func(c *Client) {
 		c.maxRecurse = v
@@ -93,7 +88,6 @@ func WithMaxRecurse(v int) func(*Client) {
 }
 
 // WithVerbose indicates whether we should be verbose or not.
-//
 func WithVerbose(v bool) func(*Client) {
 	return func(c *Client) {
 		c.verbose = v
@@ -107,7 +101,6 @@ type ClientOption func(*Client)
 //
 // ps.: it is safe to invocate the same client's `.Whois` method concurrently -
 // there is no shared context between multiple executions of it.
-//
 func NewClient(opts ...ClientOption) *Client {
 	client := &Client{
 		contextDialer:    &net.Dialer{},
@@ -155,9 +148,9 @@ func NewClient(opts ...ClientOption) *Client {
 // query to that server.
 //
 // [1]: note that some servers (like `arin`) expect the query to be prefixed
-//      with `+ n` so that it's unambigous. from my understanding, that's _not_
-//      a standard, so we must deal with it in a case-by-case basis.
 //
+//	with `+ n` so that it's unambigous. from my understanding, that's _not_
+//	a standard, so we must deal with it in a case-by-case basis.
 func (c *Client) Whois(
 	ctx context.Context, addrToQry string,
 ) (*Response, error) {
@@ -207,7 +200,6 @@ func (c *Client) Whois(
 }
 
 // whois connects against a `server` and submits a WHOIS `query` against it.
-//
 func (c *Client) whois(
 	ctx context.Context, server string, query []byte,
 ) (*Response, error) {
@@ -230,7 +222,7 @@ func (c *Client) whois(
 	elapsed = time.Since(start)
 	_ = conn.SetReadDeadline(time.Now().Add(c.timeout - elapsed))
 
-	buffer, err := ioutil.ReadAll(conn)
+	buffer, err := io.ReadAll(conn)
 	if err != nil {
 		return nil, fmt.Errorf("read response for query '%s' "+
 			"on server '%s': %w", string(query), server, err)
@@ -249,7 +241,6 @@ func (c *Client) whois(
 }
 
 // buildQuery prepares a WHOIS query.
-//
 func (c *Client) buildQuery(server, addr string) []byte {
 	const crlf = "\r\n"
 

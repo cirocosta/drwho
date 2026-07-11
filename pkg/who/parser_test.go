@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// nolint:funlen
+//nolint:funlen
 func TestParse(t *testing.T) {
 	t.Parallel()
 

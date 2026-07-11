@@ -1,16 +1,14 @@
+version: "2"
 linters:
   enable:
     - asciicheck
     - bodyclose
     - cyclop
-    - deadcode
     - dogsled
     - dupl
     - durationcheck
-    - errcheck
     - errorlint
     - exhaustive
-    - exportloopref
     - forbidigo
     - forcetypeassert
     - funlen
@@ -20,11 +18,7 @@ linters:
     - gocyclo
     - godot
     - godox
-    - goimports
     - gosec
-    - govet
-    - ifshort
-    - ineffassign
     - lll
     - makezero
     - misspell
@@ -37,25 +31,37 @@ linters:
     - prealloc
     - predeclared
     - revive
-    - staticcheck
-    - structcheck
     - testpackage
-    - typecheck
     - unconvert
     - unparam
-    - unused
-    - varcheck
     - wastedassign
     - whitespace
-
-linters-settings:
-  goimports:
-    local-prefixes: github.com/cirocosta/drwho
-  exhaustive:
-    default-signifies-exhaustive: true
-
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  fix: true
-
-run:
-  timeout: 5m
+  fix: false
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/cirocosta/drwho
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
