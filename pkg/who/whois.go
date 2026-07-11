@@ -258,6 +258,10 @@ func (c *Client) buildQuery(server, addr string) []byte {
 }
 
 func addWHOISPortIfNotSet(addr string) (string, error) {
+	if net.ParseIP(addr) != nil {
+		return net.JoinHostPort(addr, "43"), nil
+	}
+
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		addrErr := &net.AddrError{}

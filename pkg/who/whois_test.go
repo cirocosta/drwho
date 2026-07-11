@@ -37,6 +37,11 @@ func TestAddWHOISPortIfNotSet(t *testing.T) {
 			expected: "foo:1043",
 		},
 		{
+			name:     "IPv6 without port",
+			input:    "2001:db8::1",
+			expected: "[2001:db8::1]:43",
+		},
+		{
 			name:  "malformed addr",
 			input: "1:23:23",
 			err:   "too many",
