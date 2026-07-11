@@ -1,9 +1,11 @@
-package who
+package who_test
 
 import (
 	"context"
 	"net"
 	"testing"
+
+	"github.com/cirocosta/drwho/pkg/who"
 )
 
 type referralDialer struct{}
@@ -20,9 +22,11 @@ func (referralDialer) DialContext(context.Context, string, string) (net.Conn, er
 }
 
 func TestWhoisReturnsPartialResponseAtRecursionLimit(t *testing.T) {
-	client := NewClient(
-		WithContextDialer(referralDialer{}),
-		WithMaxRecurse(1),
+	t.Parallel()
+
+	client := who.NewClient(
+		who.WithContextDialer(referralDialer{}),
+		who.WithMaxRecurse(1),
 	)
 
 	response, err := client.Whois(context.Background(), "192.0.2.1")
