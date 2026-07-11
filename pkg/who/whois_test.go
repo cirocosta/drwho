@@ -11,6 +11,8 @@ import (
 func TestAddWHOISPortIfNotSet(t *testing.T) {
 	t.Parallel()
 
+	const defaultAddress = "foo:43"
+
 	for _, tc := range []struct {
 		name     string
 		input    string
@@ -25,8 +27,8 @@ func TestAddWHOISPortIfNotSet(t *testing.T) {
 
 		{
 			name:     "with std port",
-			input:    "foo:43",
-			expected: "foo:43",
+			input:    defaultAddress,
+			expected: defaultAddress,
 		},
 
 		{

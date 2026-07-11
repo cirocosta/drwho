@@ -15,7 +15,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "print the version of this CLI",
 	Run: func(_ *cobra.Command, _ []string) {
-		// nolint:forbidigo
+		//nolint:forbidigo
 		fmt.Println(version, commit)
 	},
 }
