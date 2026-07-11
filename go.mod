@@ -1,6 +1,6 @@
 module github.com/cirocosta/drwho
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/sirupsen/logrus v1.8.1
