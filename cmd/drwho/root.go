@@ -49,6 +49,10 @@ func (c *command) Cmd() *cobra.Command {
 }
 
 func (c *command) RunE(_ *cobra.Command, argv []string) error {
+	if c.concurrency == 0 {
+		return fmt.Errorf("concurrency must be greater than zero")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -68,24 +72,37 @@ func (c *command) RunE(_ *cobra.Command, argv []string) error {
 	g, ctx = errgroup.WithContext(ctx)
 
 	concurrency := min(int(c.concurrency), len(addresses))
-	for i := 0; i <= concurrency; i++ {
+	for i := 0; i < concurrency; i++ {
 		g.Go(func() error {
 			return c.resolve(ctx, addressesC, resolvedC)
 		})
 	}
+	g.Go(func() error {
+		defer close(addressesC)
 
-	printC := make(chan error)
+		for _, addr := range addresses {
+			select {
+			case addressesC <- addr:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+
+		return nil
+	})
+
+	printC := make(chan error, 1)
 	go c.printResults(resolvedC, printC)
 
-	for _, addr := range addresses {
-		addressesC <- addr
-	}
-	close(addressesC)
+	waitC := make(chan error, 1)
+	go func() {
+		waitC <- g.Wait()
+		close(resolvedC)
+	}()
 
-	if err := g.Wait(); err != nil {
+	if err := <-waitC; err != nil {
 		return fmt.Errorf("wait: %w", err)
 	}
-	close(resolvedC)
 
 	return <-printC
 }
