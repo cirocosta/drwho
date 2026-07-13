@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.5.0
-	github.com/stretchr/testify v1.7.5
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.0.0-20220412020605-290c469a71a5
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
