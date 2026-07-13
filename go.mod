@@ -7,7 +7,7 @@ require (
 	github.com/spf13/cobra v1.5.0
 	github.com/stretchr/testify v1.7.5
 	golang.org/x/net v0.0.0-20220412020605-290c469a71a5
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sync v0.22.0
 	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
 )
 
